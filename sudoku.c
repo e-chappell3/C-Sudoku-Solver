@@ -60,7 +60,7 @@ void createMatrix(){
         }
     }
 
-    int matrix[N*N*N][4*N*N];
+    int matrix[N*N*N][4*N*N] = {0};
     // N^3 given representing row, column and number possibilities as matrix rows
     // N^2 given repersenting 4 contraints across rows and columns as matrix columns
     for (int V = 0; V < N; V++){
@@ -89,7 +89,23 @@ void createMatrix(){
                     matrix[rowIndex][indexCol] = 1;
                     matrix[rowIndex][indexBox] = 1;
 
-                    printf("Row: %d, Col: %d, Val: %d all filled w/ 1s as empty\n", R, C, V + 1);
+                    printf("Row: %d, Col: %d, Val: %d all filled w/ 1s is empty\n", R, C, V + 1);
+                }
+                else if (grid[R][C] - 1 == V){
+                    // if cell is prefilled, do the same as above but only when V matches the prefilled value
+                    int rowIndex = C + (N * R) + (N * N * V);
+                    int blockIndex = (C / SIZE) + ((R / SIZE) * SIZE);
+                    int indexCell = R * N + C;
+                    int indexRow = N * N + R * N + V;
+                    int indexCol = 2 * N * N + C * N + V;
+                    int indexBox = 3 * N * N + (blockIndex * N + V);
+
+                    // fill all constraints with a 1
+                    matrix[rowIndex][indexCell] = 1;
+                    matrix[rowIndex][indexRow] = 1;
+                    matrix[rowIndex][indexCol] = 1;
+                    matrix[rowIndex][indexBox] = 1;
+                    printf("Row: %d, Col: %d, Val: %d all filled w/ 1s as prefilled\n", R, C, V + 1);
                 }
             }
         }
