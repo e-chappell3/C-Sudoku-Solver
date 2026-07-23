@@ -5,6 +5,25 @@
 #define SIZE 3
 #define N (SIZE * SIZE)
 
+struct Node{
+    // pointers to adjacent nodes by assignment row then constraint column
+    struct Node* left;
+    struct Node* right;
+    struct Node* up;
+    struct Node* down;
+    // info on column and row
+    struct ColHeadNode* col;
+    // same as rowIndex to represent row, column and value from matrix
+    int rowID;
+};
+
+struct ColHeadNode{
+    // contains self as node, column size (number of nodes) and column index
+    struct Node node;
+    int size;
+    int colID;
+};
+
 int grid[N][N];
 
 int loadPuzzle (){
@@ -44,22 +63,85 @@ void printPuzzle(){
     }
 }
 
-void createMatrix(){
-    int prefilled[N][3];
-    int pfilledCtr = 0;
+struct ColHeadNode* createDLL(int matrix[N*N*N][4*N*N]){
+    // create first column header node as root and current column node
+    struct ColHeadNode* root = (struct ColHeadNode*)malloc(sizeof(struct ColHeadNode));
+    struct ColHeadNode* currentCol = root;
+    // initialise root
+    root->colID = -1;
+    root->node.col = root;
+    root->size = 0;
+    // ensure circularity
+    root->node.up = &root->node;
+    root->node.down = &root->node;
+    root->node.left = &root->node;
+    root->node.right = &root->node;
 
-    for (int R = 0; R < N; R++){
-        for (int C = 0; C < N   ; C++){
-            if (grid[R][C] > 0){
-                prefilled[pfilledCtr][0] = grid[R][C];
-                prefilled[pfilledCtr][1] = R;
-                prefilled[pfilledCtr][2] = C;
-                pfilledCtr++;
-                printf("Prefilled: %d at Row: %d, Col: %d\n", grid[R][C], R, C);
-            }
+    for (int c = 0; c < 4*N*N; c++){
+        // iterate through each column of the matrix, setting ID to index and col to self
+        currentCol->colID = c;
+        currentCol->node.col = currentCol;
+        // while column is empty except header make size 0 and point to self so still valid pointers
+        currentCol->size = 0;
+        currentCol->node.up = &currentCol->node;
+        currentCol->node.down = &currentCol->node;
+
+        if (c < 4*N*N - 1){
+            // ensure next column not created for final column
+            struct ColHeadNode* nextCol = (struct ColHeadNode*)malloc(sizeof(struct ColHeadNode));
+            // link through pointers ensuring root is still circularly linked
+            nextCol->node.left = &currentCol->node;
+            nextCol->node.right = &root->node;
+            currentCol->node.right = &nextCol->node;
+            root->node.left = &nextCol->node;
+            // move onto next column (right)
+            currentCol = nextCol;
         }
     }
 
+    // ensure DLL is circular by linking start/root and end/current
+    currentCol->node.right = &root->node;
+    root->node.left = &currentCol->node;
+
+    for (int r = 0; r < N*N*N; r++){
+        // iterate through each row of the matrix, starting with column after root
+        currentCol = root->node.right->col;
+        // create array of nodes for the row to link together after creation
+        struct Node* rowNodes[4];
+        int count = 0;
+        // iterate through each column of the matrix
+        for (int c = 0; c < 4*N*N; c++){
+            if (matrix[r][c] == 1){
+                // if a 1 is present in the matrix, create node to represent this
+                struct Node* newNode = (struct Node*)malloc(sizeof(struct Node));
+                // give node row and column info + increment column size
+                newNode->rowID = r;
+                newNode->col = currentCol;
+                currentCol->size++;
+                // add newly created node to array of nodes for the row
+                rowNodes[count++] = newNode;
+
+                // link new node to the bottom of the column as follows
+                newNode->up = currentCol->node.up;
+                currentCol->node.up->down = newNode;
+                newNode->down = &currentCol->node;
+                currentCol->node.up = newNode;
+            }
+            // move onto next column
+            currentCol = currentCol->node.right->col;
+        }
+        for (int i = 0; i < count; i++){
+            // iterate through newly created nodes to link row together
+            rowNodes[i]->right = rowNodes[(i + 1) % count];
+            rowNodes[i]->left = rowNodes[(i + count - 1) % count];
+        }
+    }
+
+    // return root of DLL to traverse whole list through
+    return root;
+}
+
+struct ColHeadNode* createMatrix(){
     int matrix[N*N*N][4*N*N] = {0};
     // N^3 given representing row, column and number possibilities as matrix rows
     // N^2 given repersenting 4 contraints across rows and columns as matrix columns
@@ -88,8 +170,6 @@ void createMatrix(){
                     matrix[rowIndex][indexRow] = 1;
                     matrix[rowIndex][indexCol] = 1;
                     matrix[rowIndex][indexBox] = 1;
-
-                    printf("Row: %d, Col: %d, Val: %d all filled w/ 1s is empty\n", R, C, V + 1);
                 }
                 else if (grid[R][C] - 1 == V){
                     // if cell is prefilled, do the same as above but only when V matches the prefilled value
@@ -105,11 +185,12 @@ void createMatrix(){
                     matrix[rowIndex][indexRow] = 1;
                     matrix[rowIndex][indexCol] = 1;
                     matrix[rowIndex][indexBox] = 1;
-                    printf("Row: %d, Col: %d, Val: %d all filled w/ 1s as prefilled\n", R, C, V + 1);
                 }
             }
         }
     }
+
+    return createDLL(matrix);
 }
 
 int main(int argc, char* argv[]){
@@ -120,6 +201,8 @@ int main(int argc, char* argv[]){
     }
     else{
         printPuzzle();
-        createMatrix();
+        struct ColHeadNode* root = createMatrix();
+
+        free(root);
     }
 }
