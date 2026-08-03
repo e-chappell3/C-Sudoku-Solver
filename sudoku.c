@@ -193,6 +193,57 @@ struct ColHeadNode* createMatrix(){
     return createDLL(matrix);
 }
 
+void coverNode(struct Node* node){
+    // removes/covers a node from the list
+    // change pointers to skip over this node, removing column from other columns
+    printf("Covering node with rowID: %d and colID: %d\n", node->rowID, node->col->colID);
+    node->right->left = node->left;
+    node->left->right = node->right;
+    printf("node->right->left now points to (%d, %d), node->left->right = (%d, %d)\n", node->left->right->rowID, node->left->right->col->colID, node->right->left->rowID, node->right->left->col->colID);
+
+    // must also cover for all rows, starting w/ the first column down
+    struct Node* currentRow = node->down;
+    while (currentRow != node){
+        // per column, traverse through all rows via node to the right until back circularly to this node
+        struct Node* rightNode = currentRow->right;
+        while (rightNode != currentRow){
+            rightNode->up->down = rightNode->down;
+            rightNode->down->up = rightNode->up;
+            printf("node->up->down now points to (%d, %d), node->down->up = (%d, %d)\n", rightNode->up->down->rowID, rightNode->up->down->col->colID, rightNode->down->up->rowID, rightNode->down->up->col->colID);
+
+
+            // adjust column size for removal then move onto next node to right
+            rightNode->col->size--;
+            rightNode = rightNode->right;
+        }
+        currentRow = currentRow->down;
+    }
+}
+
+void uncoverNode(struct Node* node){
+    // reverses coverNode() process to point back to this node across columns + rows
+    printf("Uncovering node with rowID: %d and colID: %d\n", node->rowID, node->col->colID);
+    struct Node* currentRow = node->up;
+    while (currentRow != node){
+        struct Node* leftNode = currentRow->left;
+        while (leftNode != currentRow){
+            leftNode->col->size++;
+
+            leftNode->down->up = leftNode;
+            leftNode->up->down = leftNode;
+            printf("node->up->down now points to (%d, %d), node->down->up = (%d, %d)\n", leftNode->up->down->rowID, leftNode->up->down->col->colID, leftNode->down->up->rowID, leftNode->down->up->col->colID);
+
+            leftNode = leftNode->left;
+        }
+        currentRow = currentRow ->up;
+    }
+
+    node->right->left = node;
+    node->left->right = node;
+    printf("node->right->left now points to (%d, %d), node->left->right = (%d, %d)\n", node->left->right->rowID, node->left->right->col->colID, node->right->left->rowID, node->right->left->col->colID);
+
+}
+
 int main(int argc, char* argv[]){
     int puzzleError = loadPuzzle();
     if (puzzleError == -1){
